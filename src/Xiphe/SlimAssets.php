@@ -94,12 +94,8 @@ class SlimAssets {
 		$this->_app = $app;
 	}
 
-	public function minifyCss($source)
+	public function minifyCss($source, $target)
 	{
-		$file = basename($source);
-		$minFile = $this->getMinifyedName($file);
-		$target = "{$this->getmanagedPath()}css/{$minFile}";
-
 		if ($this->shouldBeCompiled($source, $target)) {
 			$this->ensureFileExists($target);
 
@@ -126,12 +122,8 @@ class SlimAssets {
 		}
 	}
 
-	public function minifyJs($source)
+	public function minifyJs($source, $target)
 	{
-		$file = basename($source);
-		$minFile = $this->getMinifyedName($file);
-		$target = "{$this->getmanagedPath()}js/{$minFile}";
-
 		if ($this->shouldBeCompiled($source, $target)) {
 			$this->ensureFileExists($target);
 
@@ -168,7 +160,7 @@ class SlimAssets {
 
 	public function compileLess($file)
 	{
-		$target = "{$this->getmanagedPath()}css/{$file}.css";
+		$target = "{$this->getManagedPath()}css/{$file}.css";
 		$source = "{$this->getAssetPath()}less/{$file}";
 
 		if ($this->shouldBeCompiled($source, $target)) {
@@ -181,7 +173,7 @@ class SlimAssets {
 
 	public function compileCoffee($file)
 	{
-		$target = "{$this->getmanagedPath()}js/{$file}.js";
+		$target = "{$this->getManagedPath()}js/{$file}.js";
 		$source = "{$this->getAssetPath()}coffee/{$file}";
 
 
@@ -201,7 +193,7 @@ class SlimAssets {
 		return implode('.', $file);
 	}
 
-	public function getmanagedPath()
+	public function getManagedPath()
 	{
 		return $this->basePath.$this->managedPath;
 	}
@@ -221,7 +213,8 @@ class SlimAssets {
 	{
 		$file = "{$name}.{$type}";
 		$basePath = $this->getAssetPath();
-		
+		$managed = false;
+
 		if (array_key_exists($type, self::$compiles)) {
 			if ($this->compile) {
 				$method = 'compile'.ucfirst($type);
@@ -230,17 +223,24 @@ class SlimAssets {
 			$type = self::$compiles[$type];
 			$file .= '.'.$type;
 
-			$basePath = $this->getmanagedPath();
+			$basePath = $this->getManagedPath();
+			$managed = true;
 		}
 
 		if ($this->minify) {
 			$method = 'minify'.ucfirst($type);
-			$this->$method("{$basePath}{$type}/{$file}");
+			$minFile = $this->getMinifyedName($file);
+			$source = ($managed ? $this->getManagedPath() : $this->getAssetPath());
+			$source = "{$source}{$type}/{$file}";
+
+			$target = "{$this->getManagedPath()}{$type}/{$minFile}";
+			$this->$method($source, $target);
 		}
 
 		if ($this->useMinifyed) {
-			$basePath = $this->getmanagedPath();
+			$basePath = $this->getManagedPath();
 			$file = $this->getMinifyedName($file);
+			$managed = true;
 		}
 
 		$path = "{$basePath}{$type}/{$file}";
@@ -251,9 +251,14 @@ class SlimAssets {
 	public function preferMinified($asset)
 	{
 		if ($this->preferMinifiedForCompacts) {
-			$minName = $this->getMinifyedName(basename($asset));
 			$ext = pathinfo($asset, PATHINFO_EXTENSION);
-			$minPath = "{$this->getmanagedPath()}{$ext}/{$minName}";
+
+			$name = str_replace($this->getManagedPath().$ext.'/', '', $asset);
+			if ($name === $asset) {
+				$name = str_replace($this->getAssetPath().$ext.'/', '', $asset);
+			}
+			$minName = $this->getMinifyedName($name);
+			$minPath = "{$this->getManagedPath()}{$ext}/{$minName}";
 
 			if (!$this->shouldBeCompiled($asset, $minPath)) {
 				$asset = $minPath;
@@ -282,7 +287,7 @@ class SlimAssets {
 	{
 		$buffer = '';
 		$file = "{$this->getCompactFileName($type)}.{$type}";
-		$target = "{$this->getmanagedPath()}compact/{$file}";
+		$target = "{$this->getManagedPath()}compact/{$file}";
 
 		if (!file_exists($target)) {
 			$this->ensureFileExists($target);
@@ -309,7 +314,7 @@ class SlimAssets {
 	public function getCompactUrl($type)
 	{
 		$file = "{$this->getCompactFileName($type)}.{$type}";
-		$asset = "{$this->getmanagedPath()}compact/{$file}";
+		$asset = "{$this->getManagedPath()}compact/{$file}";
 		touch($asset);
 		
 		return $this->getAssetUrl($asset);
@@ -345,13 +350,13 @@ class SlimAssets {
 			return;
 		}
 
-		$flag = "{$this->getmanagedPath()}compact/.slim_assets";
+		$flag = "{$this->getManagedPath()}compact/.slim_assets";
 		$this->ensureFileExists($flag);
 		if (filemtime($flag) + $this->cacheLifetime > time()) {
 			return;
 		}
 
-		foreach (glob("{$this->getmanagedPath()}compact/*") as $file) {
+		foreach (glob("{$this->getManagedPath()}compact/*") as $file) {
 			if (filemtime($file) + $this->cacheLifetime < time()) {
 				unlink($file);
 			}
