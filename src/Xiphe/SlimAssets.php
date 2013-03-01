@@ -15,9 +15,16 @@ class SlimAssets {
 		'less' => 'css'
 	);
 
+	public static $images = array(
+		'gif',
+		'jpg',
+		'png'
+	);
+
 	public static $html = array(
-		'js' => '<script src=":url"></script>',
-		'css' => '<link rel="stylesheet" href=":url" />'
+		'js' => '<script src=":uri"></script>',
+		'css' => '<link rel="stylesheet" href=":uri" />',
+		'img' => '<img src=":uri" :alt/>'
 	);
 
 	public static $initiated = false;
@@ -327,7 +334,7 @@ class SlimAssets {
 		}
 
 		if ($this->useCompact) {
-			echo str_replace(':url', $this->getCompactUrl($type), self::$html[$type]);
+			echo str_replace(':uri', $this->getCompactUrl($type), self::$html[$type]);
 		} else {
 
 			ksort($this->assets[$type]);
@@ -335,13 +342,24 @@ class SlimAssets {
 			foreach ($this->assets[$type] as $order => $assets) {
 				if (!empty($assets)) {
 					foreach ($assets as $asset) {
-						echo str_replace(':url', $this->getAssetUrl($asset), self::$html[$type]);
+						echo str_replace(':uri', $this->getAssetUrl($asset), self::$html[$type]);
 					}
 				}
 			}
 		}
 
 		return $this;
+	}
+
+	public function printImageTag($type, $name, $alt = null)
+	{
+		$image = "{$this->getAssetPath()}img/{$name}.{$type}";
+
+		$tag = str_replace(':uri', $this->getAssetUrl($image), self::$html['img']);
+
+		$alt = (!empty($alt) ? "alt=\"{$alt}\" " : '');
+
+		echo str_replace(':alt', $alt, $tag);
 	}
 
 	public function checkCache()
@@ -369,6 +387,12 @@ class SlimAssets {
 		if (in_array($method, self::$handleAssets)) {
 			array_splice($args, 0, 0, $method);
 			call_user_func_array(array($this, 'registerAsset'), $args);
+			return $this;
+		}
+
+		if (in_array($method, self::$images)) {
+			array_splice($args, 0, 0, $method);
+			call_user_func_array(array($this, 'printImageTag'), $args);
 			return $this;
 		}
 
