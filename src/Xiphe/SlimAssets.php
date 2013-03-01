@@ -270,7 +270,7 @@ class SlimAssets {
 				foreach ($assets as $asset) {
 					$asset = $this->preferMinified($asset);
 
-					$name = $asset.filemtime($asset);
+					$name .= $asset.filemtime($asset);
 				}
 			}
 		}
@@ -286,6 +286,8 @@ class SlimAssets {
 
 		if (!file_exists($target)) {
 			$this->ensureFileExists($target);
+
+			ksort($this->assets[$type]);
 
 			foreach ($this->assets[$type] as $order => $assets) {
 				if (!empty($assets)) {
@@ -322,6 +324,9 @@ class SlimAssets {
 		if ($this->useCompact) {
 			echo str_replace(':url', $this->getCompactUrl($type), self::$html[$type]);
 		} else {
+
+			ksort($this->assets[$type]);
+
 			foreach ($this->assets[$type] as $order => $assets) {
 				if (!empty($assets)) {
 					foreach ($assets as $asset) {
@@ -348,7 +353,6 @@ class SlimAssets {
 
 		foreach (glob("{$this->getmanagedPath()}compact/*") as $file) {
 			if (filemtime($file) + $this->cacheLifetime < time()) {
-				var_dump('delete');
 				unlink($file);
 			}
 		}
@@ -358,7 +362,8 @@ class SlimAssets {
 	public function __call($method, $args)
 	{
 		if (in_array($method, self::$handleAssets)) {
-			$this->registerAsset($method, $args[0]);
+			array_splice($args, 0, 0, $method);
+			call_user_func_array(array($this, 'registerAsset'), $args);
 			return $this;
 		}
 
