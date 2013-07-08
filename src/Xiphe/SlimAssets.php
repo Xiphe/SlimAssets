@@ -29,7 +29,7 @@ class SlimAssets {
 
 	public static $initiated = false;
 
-	public static $assets = array(
+	public $assets = array(
 		'js' => array(),
 		'css' => array()
 	);
@@ -77,23 +77,22 @@ class SlimAssets {
 
 	public function ensureFileExists($file)
 	{
-		if (!file_exists($file)) {
-			$path = dirname($file);
-            if (!is_dir($path)) {
-                @mkdir($path, 0777, true);
-            }
+    if (!file_exists($file)) {
+      $path = dirname($file);
+      if (!is_dir($path)) {
+        @mkdir($path, 0777, true);
+      }
 
-            $handle = @fopen($file, 'w');
-            if ($handle) {
-                @fclose($handle);
-            }
-            unset($handle);
-        }
+      $handle = @fopen($file, 'w');
+      if ($handle) {
+        @fclose($handle);
+      }
+      unset($handle);
+    }
 
-
-        if (!file_exists($file) || !is_writable($file)) {
-            throw new SlimAssertsException("File does not exist or is not writable: $filePath");
-        }
+    if (!file_exists($file) || !is_writable($file)) {
+      throw new SlimAssertsException("File does not exist or is not writable: $file");
+    }
 	}
 
 	public function setApp(\Slim\Slim $app)
