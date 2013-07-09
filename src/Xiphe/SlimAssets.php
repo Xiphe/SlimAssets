@@ -114,13 +114,13 @@ class SlimAssets {
 			$query = http_build_query($postParams);
 
 			$ch = curl_init();
-			 
-			 // setze die URL und andere Optionen
-			curl_setopt($ch, CURLOPT_URL, 'http://www.cssminifier.com/raw');
+
+			// setze die URL und andere Optionen
+			curl_setopt($ch, CURLOPT_URL, 'http://cssminifier.com/raw');
 			curl_setopt($ch, CURLOPT_POST, count($postParams));
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 			curl_setopt($ch, CURLOPT_POSTFIELDS, $query);
-			 
+
 			$result = curl_exec($ch);
 			curl_close($ch);
 
