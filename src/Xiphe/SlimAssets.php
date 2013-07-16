@@ -77,22 +77,22 @@ class SlimAssets {
 
 	public function ensureFileExists($file)
 	{
-    if (!file_exists($file)) {
-      $path = dirname($file);
-      if (!is_dir($path)) {
-        @mkdir($path, 0777, true);
-      }
+		if (!file_exists($file)) {
+			$path = dirname($file);
+			if (!is_dir($path)) {
+				@mkdir($path, 0777, true);
+			}
 
-      $handle = @fopen($file, 'w');
-      if ($handle) {
-        @fclose($handle);
-      }
-      unset($handle);
-    }
+			$handle = @fopen($file, 'w');
+			if ($handle) {
+				@fclose($handle);
+			}
+			unset($handle);
+		}
 
-    if (!file_exists($file) || !is_writable($file)) {
-      throw new SlimAssertsException("File does not exist or is not writable: $file");
-    }
+		if (!file_exists($file) || !is_writable($file)) {
+			throw new SlimAssertsException("File does not exist or is not writable: $file");
+		}
 	}
 
 	public function setApp(\Slim\Slim $app)
@@ -212,7 +212,8 @@ class SlimAssets {
 	public function getAssetUrl($asset)
 	{
 		$search =  '/'.str_replace('/', '\\/', preg_quote($this->basePath)).'/';
-		return preg_replace($search, $this->baseUrl, $asset, 1);
+		return preg_replace($search, $this->baseUrl, $asset, 1)
+			.'?'. http_build_query(array('v' => filemtime($asset)));
 	}
 
 	public function registerAsset($type, $name, $order = 10)
@@ -281,7 +282,7 @@ class SlimAssets {
 				foreach ($assets as $asset) {
 					$asset = $this->preferMinified($asset);
 
-					$name .= $asset.filemtime($asset);
+					$name .= $asset;
 				}
 			}
 		}
@@ -305,7 +306,6 @@ class SlimAssets {
 					foreach ($assets as $asset) {
 						$asset = $this->preferMinified($asset);
 
-						$name = $asset.filemtime($asset);
 						$buffer .= file_get_contents($asset)."\n";
 					}
 				}
