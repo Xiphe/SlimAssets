@@ -321,8 +321,7 @@ class SlimAssets {
 	{
 		$file = "{$this->getCompactFileName($type)}.{$type}";
 		$asset = "{$this->getManagedPath()}compact/{$file}";
-		touch($asset);
-		
+
 		return $this->getAssetUrl($asset);
 	}
 
