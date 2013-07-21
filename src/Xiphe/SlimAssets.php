@@ -40,12 +40,14 @@ class SlimAssets {
 	public $minify = false;
 	public $useMinifyed = true;
 	public $preferMinifiedForCompacts = true;
+	public $touch = false;
 
 	public $basePath = './';
 	public $baseUrl = './';
 	public $assetPath = 'assets/';
 	public $managedPath = 'assets/managed/';
 	public $cacheLifetime = -1;
+	public $regenerateComapct = false;
 
 	private $_app = false;
 
@@ -63,6 +65,7 @@ class SlimAssets {
 			$t->compact = true;
 			$t->useCompact = false;
 			$t->cacheLifetime = 300;
+			$t->touch = true;
 		});
 	}
 
@@ -80,7 +83,7 @@ class SlimAssets {
 		if (!file_exists($file)) {
 			$path = dirname($file);
 			if (!is_dir($path)) {
-				@mkdir($path, 0777, true);
+				@mkdir($path, 0664, true);
 			}
 
 			$handle = @fopen($file, 'w');
@@ -125,6 +128,7 @@ class SlimAssets {
 			curl_close($ch);
 
 			file_put_contents($target, $result);
+			$this->regenerateCompact = true;
 		}
 	}
 
@@ -156,6 +160,7 @@ class SlimAssets {
 			curl_close($ch);
 
 			file_put_contents($target, $result);
+			$this->regenerateCompact = true;
 		}
 	}
 
@@ -171,7 +176,7 @@ class SlimAssets {
 
 		if ($this->shouldBeCompiled($source, $target)) {
 			$this->ensureFileExists($target);
-			touch($source);
+			$this->touch($source);
 			$less = new \lessc;
 			$less->checkedCompile($source, $target);
 		}
@@ -182,13 +187,12 @@ class SlimAssets {
 		$target = "{$this->getManagedPath()}js/{$file}.js";
 		$source = "{$this->getAssetPath()}coffee/{$file}";
 
-
 		if ($this->shouldBeCompiled($source, $target)) {
 			$this->ensureFileExists($target);
 
 			$content = file_get_contents($source);
-	        $content = \CoffeeScript\Compiler::compile($content);
-	        file_put_contents($target, $content);
+			$content = \CoffeeScript\Compiler::compile($content);
+			file_put_contents($target, $content);
 		}
 	}
 
@@ -211,7 +215,7 @@ class SlimAssets {
 
 	public function getAssetUrl($asset)
 	{
-		$search =  '/'.str_replace('/', '\\/', preg_quote($this->basePath)).'/';
+		$search = '/'.str_replace('/', '\\/', preg_quote($this->basePath)).'/';
 		return preg_replace($search, $this->baseUrl, $asset, 1)
 			.'?'. http_build_query(array('v' => filemtime($asset)));
 	}
@@ -296,7 +300,7 @@ class SlimAssets {
 		$file = "{$this->getCompactFileName($type)}.{$type}";
 		$target = "{$this->getManagedPath()}compact/{$file}";
 
-		if (!file_exists($target)) {
+		if (!file_exists($target) || $this->regenerateCompact) {
 			$this->ensureFileExists($target);
 
 			ksort($this->assets[$type]);
@@ -313,7 +317,7 @@ class SlimAssets {
 
 			file_put_contents($target, trim($buffer));
 		} else {
-			touch($target);
+			$this->touch($target);
 		}
 	}
 
@@ -321,7 +325,8 @@ class SlimAssets {
 	{
 		$file = "{$this->getCompactFileName($type)}.{$type}";
 		$asset = "{$this->getManagedPath()}compact/{$file}";
-
+		$this->touch($asset);
+		
 		return $this->getAssetUrl($asset);
 	}
 
@@ -377,7 +382,14 @@ class SlimAssets {
 				unlink($file);
 			}
 		}
-		touch($flag);
+		$this->touch($flag);
+	}
+
+	public function touch($path)
+	{
+		if ($this->touch) {
+			touch($path);
+		}
 	}
 
 	public function __call($method, $args)
