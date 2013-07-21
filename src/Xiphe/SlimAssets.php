@@ -47,7 +47,7 @@ class SlimAssets {
 	public $assetPath = 'assets/';
 	public $managedPath = 'assets/managed/';
 	public $cacheLifetime = -1;
-	public $regenerateComapct = false;
+	public $regenerateCompact = false;
 
 	private $_app = false;
 
