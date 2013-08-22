@@ -176,7 +176,6 @@ class SlimAssets {
 
 		if ($this->shouldBeCompiled($source, $target)) {
 			$this->ensureFileExists($target);
-			$this->touch($source);
 			$less = new \lessc;
 			$less->checkedCompile($source, $target);
 		}
