@@ -29,7 +29,7 @@ class SlimAssets {
 
 	public static $initiated = false;
 
-	public static $assets = array(
+	public $assets = array(
 		'js' => array(),
 		'css' => array()
 	);
@@ -40,12 +40,14 @@ class SlimAssets {
 	public $minify = false;
 	public $useMinifyed = true;
 	public $preferMinifiedForCompacts = true;
+	public $touch = false;
 
 	public $basePath = './';
 	public $baseUrl = './';
 	public $assetPath = 'assets/';
 	public $managedPath = 'assets/managed/';
 	public $cacheLifetime = -1;
+	public $regenerateCompact = false;
 
 	private $_app = false;
 
@@ -63,6 +65,7 @@ class SlimAssets {
 			$t->compact = true;
 			$t->useCompact = false;
 			$t->cacheLifetime = 300;
+			$t->touch = true;
 		});
 	}
 
@@ -79,21 +82,20 @@ class SlimAssets {
 	{
 		if (!file_exists($file)) {
 			$path = dirname($file);
-            if (!is_dir($path)) {
-                @mkdir($path, 0777, true);
-            }
+			if (!is_dir($path)) {
+				@mkdir($path, 0664, true);
+			}
 
-            $handle = @fopen($file, 'w');
-            if ($handle) {
-                @fclose($handle);
-            }
-            unset($handle);
-        }
+			$handle = @fopen($file, 'w');
+			if ($handle) {
+				@fclose($handle);
+			}
+			unset($handle);
+		}
 
-
-        if (!file_exists($file) || !is_writable($file)) {
-            throw new SlimAssertsException("File does not exist or is not writable: $filePath");
-        }
+		if (!file_exists($file) || !is_writable($file)) {
+			throw new SlimAssertsException("File does not exist or is not writable: $file");
+		}
 	}
 
 	public function setApp(\Slim\Slim $app)
@@ -115,17 +117,18 @@ class SlimAssets {
 			$query = http_build_query($postParams);
 
 			$ch = curl_init();
-			 
-			 // setze die URL und andere Optionen
-			curl_setopt($ch, CURLOPT_URL, 'http://www.cssminifier.com/raw');
+
+			// setze die URL und andere Optionen
+			curl_setopt($ch, CURLOPT_URL, 'http://cssminifier.com/raw');
 			curl_setopt($ch, CURLOPT_POST, count($postParams));
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 			curl_setopt($ch, CURLOPT_POSTFIELDS, $query);
-			 
+
 			$result = curl_exec($ch);
 			curl_close($ch);
 
 			file_put_contents($target, $result);
+			$this->regenerateCompact = true;
 		}
 	}
 
@@ -157,6 +160,7 @@ class SlimAssets {
 			curl_close($ch);
 
 			file_put_contents($target, $result);
+			$this->regenerateCompact = true;
 		}
 	}
 
@@ -172,7 +176,6 @@ class SlimAssets {
 
 		if ($this->shouldBeCompiled($source, $target)) {
 			$this->ensureFileExists($target);
-			touch($source);
 			$less = new \lessc;
 			$less->checkedCompile($source, $target);
 		}
@@ -183,13 +186,12 @@ class SlimAssets {
 		$target = "{$this->getManagedPath()}js/{$file}.js";
 		$source = "{$this->getAssetPath()}coffee/{$file}";
 
-
 		if ($this->shouldBeCompiled($source, $target)) {
 			$this->ensureFileExists($target);
 
 			$content = file_get_contents($source);
-	        $content = \CoffeeScript\Compiler::compile($content);
-	        file_put_contents($target, $content);
+			$content = \CoffeeScript\Compiler::compile($content);
+			file_put_contents($target, $content);
 		}
 	}
 
@@ -212,8 +214,9 @@ class SlimAssets {
 
 	public function getAssetUrl($asset)
 	{
-		$search =  '/'.str_replace('/', '\\/', preg_quote($this->basePath)).'/';
-		return preg_replace($search, $this->baseUrl, $asset, 1);
+		$search = '/'.str_replace('/', '\\/', preg_quote($this->basePath)).'/';
+		return preg_replace($search, $this->baseUrl, $asset, 1)
+			.'?'. http_build_query(array('v' => filemtime($asset)));
 	}
 
 	public function registerAsset($type, $name, $order = 10)
@@ -282,7 +285,7 @@ class SlimAssets {
 				foreach ($assets as $asset) {
 					$asset = $this->preferMinified($asset);
 
-					$name .= $asset.filemtime($asset);
+					$name .= $asset;
 				}
 			}
 		}
@@ -296,7 +299,7 @@ class SlimAssets {
 		$file = "{$this->getCompactFileName($type)}.{$type}";
 		$target = "{$this->getManagedPath()}compact/{$file}";
 
-		if (!file_exists($target)) {
+		if (!file_exists($target) || $this->regenerateCompact) {
 			$this->ensureFileExists($target);
 
 			ksort($this->assets[$type]);
@@ -306,7 +309,6 @@ class SlimAssets {
 					foreach ($assets as $asset) {
 						$asset = $this->preferMinified($asset);
 
-						$name = $asset.filemtime($asset);
 						$buffer .= file_get_contents($asset)."\n";
 					}
 				}
@@ -314,7 +316,7 @@ class SlimAssets {
 
 			file_put_contents($target, trim($buffer));
 		} else {
-			touch($target);
+			$this->touch($target);
 		}
 	}
 
@@ -322,7 +324,7 @@ class SlimAssets {
 	{
 		$file = "{$this->getCompactFileName($type)}.{$type}";
 		$asset = "{$this->getManagedPath()}compact/{$file}";
-		touch($asset);
+		$this->touch($asset);
 		
 		return $this->getAssetUrl($asset);
 	}
@@ -379,7 +381,14 @@ class SlimAssets {
 				unlink($file);
 			}
 		}
-		touch($flag);
+		$this->touch($flag);
+	}
+
+	public function touch($path)
+	{
+		if ($this->touch) {
+			touch($path);
+		}
 	}
 
 	public function __call($method, $args)
