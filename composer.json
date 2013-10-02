@@ -1,5 +1,5 @@
 {
-	"name": "xiphe/slimassets",
+    "name": "xiphe/slimassets",
     "type": "assets",
     "description": "Simple Asset Manager for Slim PHP.",
     "homepage": "https://github.com/Xiphe/SlimAssets",
